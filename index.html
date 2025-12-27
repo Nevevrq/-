@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日期到期提醒機器人</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            padding: 25px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+        }
+        
+        .card h2 {
+            color: #3498db;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .button:hover {
+            background: #2980b9;
+        }
+        
+        .button.secondary {
+            background: #2ecc71;
+            margin-top: 5px;
+        }
+        
+        .button.secondary:hover {
+            background: #27ae60;
+        }
+        
+        .button.danger {
+            background: #e74c3c;
+        }
+        
+        .button.danger:hover {
+            background: #c0392b;
+        }
+        
+        .reminder-list {
+            margin-top: 20px;
+        }
+        
+        .reminder-item {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 5px solid #3498db;
+            position: relative;
+        }
+        
+        .reminder-item.warning {
+            border-left-color: #f39c12;
+            background: #fff9e6;
+        }
+        
+        .reminder-item.critical {
+            border-left-color: #e74c3c;
+            background: #ffeaea;
+        }
+        
+        .reminder-item.expired {
+            border-left-color: #7f8c8d;
+            background: #f5f5f5;
+            opacity: 0.8;
+        }
+        
+        .reminder-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        
+        .reminder-date {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .reminder-days {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-top: 5px;
+        }
+        
+        .reminder-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
+        
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0 5px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-safe {
+            background: #2ecc71;
+        }
+        
+        .status-warning {
+            background: #f39c12;
+        }
+        
+        .status-critical {
+            background: #e74c3c;
+        }
+        
+        .status-expired {
+            background: #7f8c8d;
+        }
+        
+        .summary {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .summary-item {
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .summary-count {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .summary-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        
+        .today-date {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        .no-reminders {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        
+        .notification-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 350px;
+        }
+        
+        .notification {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+            border-left: 5px solid #3498db;
+            display: flex;
+            align-items: center;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification.warning {
+            border-left-color: #f39c12;
+        }
+        
+        .notification.critical {
+            border-left-color: #e74c3c;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: #7f8c8d;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-left: auto;
+            padding: 0 5px;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 8px 15px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .export-import {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .export-import .button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📅 日期到期提醒機器人</h1>
+            <p class="subtitle">設定重要日期，提前30天自動提醒您，避免錯過任何截止日期</p>
+        </header>
+        
+        <div class="today-date" id="todayDate"></div>
+        
+        <div class="dashboard">
+            <div class="card">
+                <h2>➕ 新增提醒事項</h2>
+                <form id="reminderForm">
+                    <div class="form-group">
+                        <label for="title">事項名稱 *</label>
+                        <input type="text" id="title" placeholder="例如：保險到期、駕照更新、會員續費..." required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="date">到期日期 *</label>
+                        <input type="date" id="date" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">事項描述 (選填)</label>
+                        <textarea id="description" placeholder="補充說明或備註..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reminderDays">提前提醒天數</label>
+                        <input type="number" id="reminderDays" min="1" max="365" value="30">
+                        <small>系統將在此日期前指定的天數提醒您</small>
+                    </div>
+                    
+                    <button type="submit" class="button">新增提醒事項</button>
+                </form>
+                
+                <div class="export-import">
+                    <button type="button" class="button secondary" id="exportBtn">匯出提醒清單</button>
+                    <button type="button" class="button secondary" id="importBtn">匯入提醒清單</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📊 提醒總覽</h2>
+                
+                <div class="summary">
+                    <div class="summary-item">
+                        <div class="summary-count" id="totalCount">0</div>
+                        <div class="summary-label">總事項</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-count" id="upcomingCount">0</div>
+                        <div class="summary-label">即將到期</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-count" id="criticalCount">0</div>
+                        <div class="summary-label">緊急事項</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-count" id="expiredCount">0</div>
+                        <div class="summary-label">已過期</div>
+                    </div>
+                </div>
+                
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">全部</button>
+                    <button class="filter-btn" data-filter="upcoming">即將到期</button>
+                    <button class="filter-btn" data-filter="critical">緊急</button>
+                    <button class="filter-btn" data-filter="expired">已過期</button>
+                </div>
+                
+                <div class="reminder-list" id="reminderList">
+                    <div class="no-reminders" id="noReminders">
+                        <p>目前沒有任何提醒事項</p>
+                        <p>請在左側表單新增您的第一個提醒</p>
+                    </div>
+                </div>
+                
+                <button type="button" class="button danger" id="clearAllBtn" style="display: none;">清除所有提醒</button>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2025 日期到期提醒機器人 | 數據儲存在本地瀏覽器，不會上傳到伺服器</p>
+            <p>使用提醒：建議定期匯出備份您的提醒清單</p>
+        </footer>
+    </div>
+    
+    <div class="notification-panel" id="notificationPanel"></div>
+
+    <script>
+        // 初始化變數
+        let reminders = [];
+        let currentFilter = 'all';
+        
+        // DOM 元素
+        const reminderForm = document.getElementById('reminderForm');
+        const reminderList = document.getElementById('reminderList');
+        const noReminders = document.getElementById('noReminders');
+        const todayDate = document.getElementById('todayDate');
+        const totalCount = document.getElementById('totalCount');
+        const upcomingCount = document.getElementById('upcomingCount');
+        const criticalCount = document.getElementById('criticalCount');
+        const expiredCount = document.getElementById('expiredCount');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const notificationPanel = document.getElementById('notificationPanel');
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 設定今日日期顯示
+            updateTodayDate();
+            
+            // 設定日期輸入框的最小值為今天
+            document.getElementById('date').min = new Date().toISOString().split('T')[0];
+            
+            // 從本地儲存載入提醒事項
+            loadReminders();
+            
+            // 設定表單提交事件
+            reminderForm.addEventListener('submit', addReminder);
+            
+            // 設定篩選按鈕事件
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.getAttribute('data-filter');
+                    renderReminders();
+                });
+            });
+            
+            // 設定清除所有按鈕事件
+            clearAllBtn.addEventListener('click', clearAllReminders);
+            
+            // 設定匯出/匯入按鈕事件
+            exportBtn.addEventListener('click', exportReminders);
+            importBtn.addEventListener('click', importReminders);
+            
+            // 每日檢查提醒
+            checkDailyReminders();
+            
+            // 模擬一些初始數據（僅在第一次使用時）
+            if (reminders.length === 0) {
+                addSampleReminders();
+            }
+        });
+        
+        // 更新今日日期顯示
+        function updateTodayDate() {
+            const today = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            todayDate.textContent = `今天日期：${today.toLocaleDateString('zh-TW', options)}`;
+        }
+        
+        // 從本地儲存載入提醒事項
+        function loadReminders() {
+            const saved = localStorage.getItem('dateReminders');
+            if (saved) {
+                reminders = JSON.parse(saved);
+                // 將日期字串轉換回 Date 物件
+                reminders.forEach(reminder => {
+                    reminder.date = new Date(reminder.date);
+                    if (reminder.created) reminder.created = new Date(reminder.created);
+                });
+            }
+            renderReminders();
+            updateSummary();
+        }
+        
+        // 儲存提醒事項到本地儲存
+        function saveReminders() {
+            // 將 Date 物件轉換為字串以便儲存
+            const remindersToSave = reminders.map(reminder => ({
+                ...reminder,
+                date: reminder.date.toISOString(),
+                created: reminder.created ? reminder.created.toISOString() : new Date().toISOString()
+            }));
+            localStorage.setItem('dateReminders', JSON.stringify(remindersToSave));
+            renderReminders();
+            updateSummary();
+        }
+        
+        // 新增提醒事項
+        function addReminder(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value.trim();
+            const date = new Date(document.getElementById('date').value);
+            const description = document.getElementById('description').value.trim();
+            const reminderDays = parseInt(document.getElementById('reminderDays').value) || 30;
+            
+            if (!title || !date) {
+                showNotification('請填寫所有必填欄位', 'warning');
+                return;
+            }
+            
+            // 檢查日期是否有效
+            if (isNaN(date.getTime())) {
+                showNotification('請選擇有效的日期', 'warning');
+                return;
+            }
+            
+            const newReminder = {
+                id: Date.now(),
+                title,
+                date,
+                description,
+                reminderDays,
+                created: new Date()
+            };
+            
+            reminders.push(newReminder);
+            saveReminders();
+            
+            // 重置表單
+            reminderForm.reset();
+            document.getElementById('date').min = new Date().toISOString().split('T')[0];
+            document.getElementById('reminderDays').value = 30;
+            
+            showNotification(`已新增提醒事項：${title}`, 'info');
+            
+            // 檢查是否需要立即提醒
+            checkReminderStatus(newReminder);
+        }
+        
+        // 刪除提醒事項
+        function deleteReminder(id) {
+            const reminder = reminders.find(r => r.id === id);
+            if (reminder) {
+                reminders = reminders.filter(r => r.id !== id);
+                saveReminders();
+                showNotification(`已刪除提醒事項：${reminder.title}`, 'info');
+            }
+        }
+        
+        // 清除所有提醒事項
+        function clearAllReminders() {
+            if (reminders.length === 0) return;
+            
+            if (confirm('確定要清除所有提醒事項嗎？此操作無法復原。')) {
+                reminders = [];
+                saveReminders();
+                showNotification('已清除所有提醒事項', 'info');
+            }
+        }
+        
+        // 匯出提醒事項
+        function exportReminders() {
+            if (reminders.length === 0) {
+                showNotification('沒有任何提醒事項可以匯出', 'warning');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(reminders, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `提醒事項備份_${new Date().toISOString().split('T')[0]}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            showNotification('提醒事項已匯出為 JSON 檔案', 'info');
+        }
+        
+        // 匯入提醒事項
+        function importReminders() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const importedReminders = JSON.parse(event.target.result);
+                        
+                        // 驗證資料格式
+                        if (!Array.isArray(importedReminders)) {
+                            throw new Error('檔案格式不正確');
+                        }
+                        
+                        // 轉換日期字串為 Date 物件
+                        importedReminders.forEach(reminder => {
+                            reminder.date = new Date(reminder.date);
+                            if (reminder.created) reminder.created = new Date(reminder.created);
+                            else reminder.created = new Date();
+                            
+                            // 確保每個提醒有唯一的 ID
+                            if (!reminder.id) reminder.id = Date.now() + Math.random();
+                        });
+                        
+                        // 合併到現有提醒清單（避免重複）
+                        const existingIds = reminders.map(r => r.id);
+                        const newReminders = importedReminders.filter(r => !existingIds.includes(r.id));
+                        
+                        reminders = [...reminders, ...newReminders];
+                        saveReminders();
+                        
+                        showNotification(`已成功匯入 ${newReminders.length} 個提醒事項`, 'info');
+                    } catch (error) {
+                        showNotification('匯入失敗：檔案格式不正確', 'critical');
+                        console.error(error);
+                    }
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+        
+        // 計算剩餘天數
+        function getDaysRemaining(date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const targetDate = new Date(date);
+            targetDate.setHours(0, 0, 0, 0);
+            
+            const diffTime = targetDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            return diffDays;
+        }
+        
+        // 取得提醒狀態
+        function getReminderStatus(reminder) {
+            const daysRemaining = getDaysRemaining(reminder.date);
+            
+            if (daysRemaining < 0) {
+                return 'expired';
+            } else if (daysRemaining <= 7) {
+                return 'critical';
+            } else if (daysRemaining <= reminder.reminderDays) {
+                return 'warning';
+            } else {
+                return 'safe';
+            }
+        }
+        
+        // 檢查提醒狀態並顯示通知
+        function checkReminderStatus(reminder) {
+            const status = getReminderStatus(reminder);
+            const daysRemaining = getDaysRemaining(reminder.date);
+            
+            if (status === 'critical' && daysRemaining >= 0) {
+                showNotification(`緊急：${reminder.title} 將在 ${daysRemaining} 天後到期`, 'critical');
+            } else if (status === 'warning') {
+                showNotification(`提醒：${reminder.title} 將在 ${daysRemaining} 天後到期`, 'warning');
+            }
+        }
+        
+        // 每日檢查提醒
+        function checkDailyReminders() {
+            const lastCheck = localStorage.getItem('lastReminderCheck');
+            const today = new Date().toDateString();
+            
+            // 如果今天已經檢查過，則跳過
+            if (lastCheck === today) return;
+            
+            // 檢查所有提醒事項
+            reminders.forEach(reminder => {
+                checkReminderStatus(reminder);
+            });
+            
+            // 更新最後檢查日期
+            localStorage.setItem('lastReminderCheck', today);
+        }
+        
+        // 顯示通知
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            // 根據類型設定圖示
+            let icon = 'ℹ️';
+            if (type === 'warning') icon = '⚠️';
+            if (type === 'critical') icon = '🚨';
+            
+            notification.innerHTML = `
+                <span>${icon}</span>
+                <span style="flex: 1; margin: 0 10px;">${message}</span>
+                <button class="notification-close">&times;</button>
+            `;
+            
+            // 設定關閉按鈕事件
+            notification.querySelector('.notification-close').addEventListener('click', function() {
+                notification.remove();
+            });
+            
+            // 自動移除通知（5秒後）
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.style.opacity = '0';
+                    notification.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        if (notification.parentNode) notification.remove();
+                    }, 300);
+                }
+            }, 5000);
+            
+            notificationPanel.appendChild(notification);
+        }
+        
+        // 渲染提醒事項列表
+        function renderReminders() {
+            reminderList.innerHTML = '';
+            
+            // 根據篩選條件過濾提醒事項
+            let filteredReminders = reminders;
+            
+            if (currentFilter === 'upcoming') {
+                filteredReminders = reminders.filter(r => getReminderStatus(r) === 'warning');
+            } else if (currentFilter === 'critical') {
+                filteredReminders = reminders.filter(r => getReminderStatus(r) === 'critical');
+            } else if (currentFilter === 'expired') {
+                filteredReminders = reminders.filter(r => getReminderStatus(r) === 'expired');
+            }
+            
+            // 按日期排序（最近到期的在前）
+            filteredReminders.sort((a, b) => a.date - b.date);
+            
+            if (filteredReminders.length === 0) {
+                noReminders.style.display = 'block';
+                clearAllBtn.style.display = 'none';
+            } else {
+                noReminders.style.display = 'none';
+                clearAllBtn.style.display = reminders.length > 0 ? 'block' : 'none';
+                
+                filteredReminders.forEach(reminder => {
+                    const daysRemaining = getDaysRemaining(reminder.date);
+                    const status = getReminderStatus(reminder);
+                    
+                    const reminderItem = document.createElement('div');
+                    reminderItem.className = `reminder-item ${status}`;
+                    
+                    // 狀態指示器
+                    let statusIcon = '🟢';
+                    let statusText = '安全';
+                    if (status === 'warning') {
+                        statusIcon = '🟡';
+                        statusText = '即將到期';
+                    } else if (status === 'critical') {
+                        statusIcon = '🔴';
+                        statusText = '緊急';
+                    } else if (status === 'expired') {
+                        statusIcon = '⚫';
+                        statusText = '已過期';
+                    }
+                    
+                    // 格式化日期
+                    const dateStr = reminder.date.toLocaleDateString('zh-TW', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        weekday: 'long'
+                    });
+                    
+                    reminderItem.innerHTML = `
+                        <div class="reminder-actions">
+                            <button class="delete-btn" data-id="${reminder.id}">&times;</button>
+                        </div>
+                        <div class="reminder-title">${statusIcon} ${reminder.title}</div>
+                        <div class="reminder-date">到期日期：${dateStr}</div>
+                        ${reminder.description ? `<div class="reminder-description">${reminder.description}</div>` : ''}
+                        <div class="reminder-days">
+                            ${daysRemaining >= 0 ? 
+                                `剩餘 ${daysRemaining} 天 (${statusText})` : 
+                                `已過期 ${Math.abs(daysRemaining)} 天`}
+                        </div>
+                    `;
+                    
+                    reminderList.appendChild(reminderItem);
+                    
+                    // 設定刪除按鈕事件
+                    reminderItem.querySelector('.delete-btn').addEventListener('click', function() {
+                        deleteReminder(reminder.id);
+                    });
+                });
+            }
+        }
+        
+        // 更新摘要統計
+        function updateSummary() {
+            totalCount.textContent = reminders.length;
+            
+            const upcoming = reminders.filter(r => getReminderStatus(r) === 'warning').length;
+            const critical = reminders.filter(r => getReminderStatus(r) === 'critical').length;
+            const expired = reminders.filter(r => getReminderStatus(r) === 'expired').length;
+            
+            upcomingCount.textContent = upcoming;
+            criticalCount.textContent = critical;
+            expiredCount.textContent = expired;
+            
+            // 如果有緊急事項，更新標題提醒
+            if (critical > 0) {
+                document.title = `(${critical}) 日期到期提醒機器人`;
+            } else {
+                document.title = '日期到期提醒機器人';
+            }
+        }
+        
+        // 新增範例提醒事項（僅在第一次使用時）
+        function addSampleReminders() {
+            const today = new Date();
+            
+            const sampleReminders = [
+                {
+                    id: Date.now() + 1,
+                    title: "駕照到期更新",
+                    date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 45),
+                    description: "記得帶身分證、舊駕照和照片",
+                    reminderDays: 30,
+                    created: new Date()
+                },
+                {
+                    id: Date.now() + 2,
+                    title: "汽車保險續保",
+                    date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 15),
+                    description: "聯絡保險業務員：王先生 0912-345-678",
+                    reminderDays: 30,
+                    created: new Date()
+                },
+                {
+                    id: Date.now() + 3,
+                    title: "網路會員訂閱",
+                    date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5),
+                    description: "自動扣款，檢查信用卡額度",
+                    reminderDays: 30,
+                    created: new Date()
+                },
+                {
+                    id: Date.now() + 4,
+                    title: "護照到期換發",
+                    date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90),
+                    description: "需準備6個月內照片",
+                    reminderDays: 30,
+                    created: new Date()
+                }
+            ];
+            
+            reminders = sampleReminders;
+            saveReminders();
+        }
+    </script>
+</body>
+</html>
